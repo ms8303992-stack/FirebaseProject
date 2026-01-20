@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام المصادقة - مدونتي</title>
+    
+    <!-- Firebase Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            transition: all 0.5s ease;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            display: flex;
+            min-height: 600px;
+        }
+        
+        /* Left Panel - Login */
+        .login-section {
+            flex: 1;
+            padding: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .app-title {
+            font-size: 2.8rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .app-subtitle {
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #6a11cb;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(106, 17, 203, 0.1);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(106, 17, 203, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #2c3e50;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .btn-secondary:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+        
+        .divider {
+            text-align: center;
+            margin: 30px 0;
+            position: relative;
+            color: #95a5a6;
+        }
+        
+        .divider::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e0e0e0;
+        }
+        
+        .divider span {
+            background: white;
+            padding: 0 20px;
+            position: relative;
+            font-size: 0.9rem;
+        }
+        
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .error-message {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+        }
+        
+        .success-message {
+            background: linear-gradient(135deg, #1dd1a1 0%, #10ac84 100%);
+            color: white;
+        }
+        
+        .loading-message {
+            background: #3498db;
+            color: white;
+        }
+        
+        /* Right Panel - Dashboard (Initially Hidden) */
+        .dashboard-section {
+            flex: 1;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 50px;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .dashboard-active .login-section {
+            display: none;
+        }
+        
+        .dashboard-active .dashboard-section {
+            display: flex;
+        }
+        
+        .welcome-title {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: white;
+        }
+        
+        .user-email {
+            font-size: 1.2rem;
+            color: #ecf0f1;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        
+        .features {
+            margin: 40px 0;
+        }
+        
+        .feature-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s;
+        }
+        
+        .feature-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(10px);
+        }
+        
+        .feature-icon {
+            font-size: 1.5rem;
+        }
+        
+        .btn-logout {
+            background: rgba(231, 76, 60, 0.9);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        
+        .btn-logout:hover {
+            background: rgba(192, 57, 43, 0.9);
+            transform: translateY(-3px);
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+        
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                max-width: 500px;
+            }
+            
+            .login-section, .dashboard-section {
+                padding: 30px;
+            }
+        }
+        
+        .firebase-info {
+            background: rgba(52, 152, 219, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 30px;
+            font-size: 0.9rem;
+            color: #3498db;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="mainContainer">
+        
+        <!-- Login/Signup Section -->
+        <div class="login-section">
+            <h1 class="app-title">مدونتي ✨</h1>
+            <p class="app-subtitle">أنشئ حسابك وابدأ رحلة التدوين</p>
+            
+            <div id="messageBox" class="message"></div>
+            
+            <div class="form-group">
+                <label class="form-label">📧 البريد الإلكتروني</label>
+                <input type="email" id="emailInput" class="form-input" placeholder="example@gmail.com">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">🔐 كلمة المرور</label>
+                <input type="password" id="passwordInput" class="form-input" placeholder="6 أحرف على الأقل">
+            </div>
+            
+            <button class="btn btn-primary" onclick="signUp()">
+                <span>✅</span> إنشاء حساب جديد
+            </button>
+            
+            <div class="divider">
+                <span>أو</span>
+            </div>
+            
+            <button class="btn btn-secondary" onclick="signIn()">
+                <span>🔓</span> الدخول بحساب موجود
+            </button>
+            
+            <div class="firebase-info">
+                <strong>⚡ يعمل بنظام Firebase Authentication</strong>
+                <p style="margin-top: 5px; font-size: 0.8rem;">بيانات آمنة ومشفرة</p>
+            </div>
+        </div>
+        
+        <!-- Dashboard Section (Hidden Initially) -->
+        <div class="dashboard-section">
+            <h1 class="welcome-title">🎉 أهلاً وسهلاً!</h1>
+            
+            <div id="userEmailDisplay" class="user-email">جاري تحميل بياناتك...</div>
+            
+            <div class="features">
+                <div class="feature-item">
+                    <span class="feature-icon">📝</span>
+                    <div>
+                        <h3>اكتب مقالتك الأولى</h3>
+                        <p>ابدأ بالتدوين ومشاركة أفكارك</p>
+                    </div>
+                </div>
+                
+                <div class="feature-item">
+                    <span class="feature-icon">📊</span>
+                    <div>
+                        <h3>تابع إحصائياتك</h3>
+                        <p>عدد القراء والتعليقات والمشاركات</p>
+                    </div>
+                </div>
+                
+                <div class="feature-item">
+                    <span class="feature-icon">👥</span>
+                    <div>
+                        <h3>تفاعل مع المجتمع</h3>
+                        <p>تواصل مع المدونين الآخرين</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn-logout" onclick="logout()">
+                <span>🚪</span> تسجيل الخروج
+            </button>
+            
+            <div class="footer">
+                <p>© 2024 مدونتي الشخصية - جميع الحقوق محفوظة</p>
+                <p style="margin-top: 5px;">تم تسجيل دخولك بنجاح عبر Firebase</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 🔥 🔥 🔥 بيانات مشروع Firebase - ضعها هنا كما هي 🔥 🔥 🔥
+        const firebaseConfig = {
+            apiKey: "AIzaSyAMdQ6KM8oLBSr8Y212T40iYchvK-EVM94",
+            authDomain: "vue-blog-app-efc9c.firebaseapp.com",
+            projectId: "vue-blog-app-efc9c",
+            storageBucket: "vue-blog-app-efc9c.firebasestorage.app",
+            messagingSenderId: "1039131052430",
+            appId: "1:1039131052430:web:4764347062ef0efa687cdf"
+        };
+
+        // تهيئة Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // عناصر DOM
+        const messageBox = document.getElementById('messageBox');
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const mainContainer = document.getElementById('mainContainer');
+        const userEmailDisplay = document.getElementById('userEmailDisplay');
+        
+        // التحقق من حالة المستخدم عند التحميل
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                // إذا كان المستخدم مسجل دخول
+                showDashboard(user.email);
+            }
+        });
+        
+        // إظهار رسالة
+        function showMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.className = 'message';
+            
+            switch(type) {
+                case 'error':
+                    messageBox.classList.add('error-message');
+                    break;
+                case 'success':
+                    messageBox.classList.add('success-message');
+                    break;
+                case 'loading':
+                    messageBox.classList.add('loading-message');
+                    break;
+            }
+            
+            messageBox.style.display = 'block';
+            
+            // إخفاء الرسالة بعد 5 ثواني
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        // إظهار لوحة التحكم
+        function showDashboard(email) {
+            userEmailDisplay.textContent = `📧 ${email}`;
+            mainContainer.classList.add('dashboard-active');
+            document.title = "لوحة التحكم - مدونتي";
+        }
+        
+        // إخفاء لوحة التحكم
+        function hideDashboard() {
+            mainContainer.classList.remove('dashboard-active');
+            document.title = "نظام المصادقة - مدونتي";
+        }
+        
+        // إنشاء حساب جديد
+        function signUp() {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+            
+            // التحقق من البيانات
+            if (!validateInput(email, password)) return;
+            
+            showMessage('جاري إنشاء حسابك...', 'loading');
+            
+            firebase.auth().createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    showMessage('🎉 تم إنشاء حسابك بنجاح!', 'success');
+                    // لا حاجة للانتقال - سيتم العرض تلقائياً عبر onAuthStateChanged
+                })
+                .catch((error) => {
+                    handleAuthError(error, 'إنشاء');
+                });
+        }
+        
+        // تسجيل الدخول
+        function signIn() {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+            
+            // التحقق من البيانات
+            if (!validateInput(email, password)) return;
+            
+            showMessage('جاري تسجيل الدخول...', 'loading');
+            
+            firebase.auth().signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    showMessage('✅ تم الدخول بنجاح!', 'success');
+                    // لا حاجة للانتقال - سيتم العرض تلقائياً
+                })
+                .catch((error) => {
+                    handleAuthError(error, 'دخول');
+                });
+        }
+        
+        // تسجيل الخروج
+        function logout() {
+            showMessage('جاري تسجيل الخروج...', 'loading');
+            
+            firebase.auth().signOut()
+                .then(() => {
+                    showMessage('تم تسجيل الخروج بنجاح', 'success');
+                    hideDashboard();
+                    emailInput.value = '';
+                    passwordInput.value = '';
+                })
+                .catch((error) => {
+                    showMessage('خطأ في تسجيل الخروج: ' + error.message, 'error');
+                });
+        }
+        
+        // التحقق من صحة البيانات
+        function validateInput(email, password) {
+            if (!email) {
+                showMessage('⚠️ الرجاء إدخال البريد الإلكتروني', 'error');
+                emailInput.focus();
+                return false;
+            }
+            
+            if (!password) {
+                showMessage('⚠️ الرجاء إدخال كلمة المرور', 'error');
+                passwordInput.focus();
+                return false;
+            }
+            
+            if (password.length < 6) {
+                showMessage('⚠️ كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error');
+                passwordInput.focus();
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // معالجة أخطاء المصادقة
+        function handleAuthError(error, action) {
+            let errorMessage = `❌ خطأ في ${action}: `;
+            
+            switch(error.code) {
+                case 'auth/email-already-in-use':
+                    errorMessage = '⚠️ هذا البريد الإلكتروني مسجل بالفعل';
+                    break;
+                case 'auth/user-not-found':
+                    errorMessage = '⚠️ لا يوجد حساب بهذا البريد الإلكتروني';
+                    break;
+                case 'auth/wrong-password':
+                    errorMessage = '⚠️ كلمة المرور غير صحيحة';
+                    break;
+                case 'auth/invalid-email':
+                    errorMessage = '⚠️ البريد الإلكتروني غير صالح';
+                    break;
+                case 'auth/weak-password':
+                    errorMessage = '⚠️ كلمة المرور ضعيفة جداً';
+                    break;
+                case 'auth/too-many-requests':
+                    errorMessage = '⚠️ محاولات كثيرة جداً، حاول لاحقاً';
+                    break;
+                default:
+                    errorMessage += error.message;
+            }
+            
+            showMessage(errorMessage, 'error');
+        }
+        
+        // تفعيل الإدخال بالزر Enter
+        document.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                if (emailInput.value && passwordInput.value) {
+                    signIn();
+                }
+            }
+        });
+        
+        // تعليمات البدء
+        console.log('🔥 نظام المصادقة جاهز للعمل!');
+        console.log('📧 جرب التسجيل باستخدام: test@test.com / 123456');
+    </script>
+</body>
+</html>
